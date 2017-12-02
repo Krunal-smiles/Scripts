@@ -1,0 +1,6 @@
+$UserCredential = Get-Credential
+$Session = New-PSSession -ConfigurationName Microsoft.Exchange -ConnectionUri https://outlook.office365.com/powershell-liveid/ -Credential $UserCredential -Authentication Basic -AllowRedirection
+Import-PSSession $Session
+$FTE = Get-DynamicDistributionGroup "AllStaff"
+Get-Recipient -RecipientPreviewFilter $FTE.RecipientFilter
+Get-Recipient -RecipientPreviewFilter $FTE.RecipientFilter | Sort-Object Name |  Format-Table  -Property Name
