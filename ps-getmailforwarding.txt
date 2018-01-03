@@ -1,0 +1,15 @@
+#connect to Exchange online
+$UserCredential = Get-Credential
+$Session = New-PSSession -ConfigurationName Microsoft.Exchange -ConnectionUri https://outlook.office365.com/powershell-liveid/ -Credential $UserCredential -Authentication Basic -AllowRedirection
+Import-PSSession $Session
+
+#Get mailboxes
+$mailboxes=get-mailbox –resultSize unlimited
+
+#get mail forwarding set by Admins
+$mailboxes | where { ($_.forwardingSMTPAddress –ne $NULL)  -or ($_.ForwardingAddress –ne $NULL) -or ($_.DeliverToMailboxAndForward –eq "True") } | ft UserPrincipalName,ForwardingSmtpAddress,ForwardingAddress,DeliverToMailboxAndForward
+
+#get mail forwarding set by users
+$rules = $mailboxes | foreach { get-inboxRule –mailbox $_.alias }
+$frules = $rules | where { ( $_.forwardAsAttachmentTo –ne $NULL  ) –or ( $_.forwardTo –ne $NULL ) –or ( $_.redirectTo –ne $NULL ) }
+$frules | format-table -Property Name, Identity, ForwardAsAttachmentTo, ForwardTo, RedirectTo -Wrap
