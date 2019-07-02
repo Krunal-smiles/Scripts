@@ -1,0 +1,145 @@
+<AMTASK>
+<AMTASKHEAD>
+    <TASKINFO TASKVERSION="10.7.100.1" />
+</AMTASKHEAD>
+
+<AMFUNCTION NAME="Main" ACCESS="private" RETURNTYPE="variable">
+<!-- File path and name -->
+<!--
+<AMVARIABLE NAME="scanfilepath" ISPARAMETER="YES">%FS_PATH%</AMVARIABLE>
+   --><AMVARIABLE NAME="scanfilepath" VALUE="C:\Temp\DatamngrHlpFF19.dll" ISPARAMETER="YES" />
+<!--
+<AMVARIABLE NAME="scanfilename" ISPARAMETER="YES">%FS_FILE_NAME%</AMVARIABLE>
+   --><AMVARIABLE NAME="scanfilename" VALUE="DatamngrHlpFF19.dll" ISPARAMETER="YES" />
+<!-- Rest endpoint details, scanning profile and key -->
+<AMVARIABLE NAME="apihost" VALUE="api.sasa-software.com" />
+<AMVARIABLE NAME="multipleav_profile_id" VALUE="26" />
+<AMVARIABLE NAME="cylanceonly_profile_id" VALUE="27" />
+<AMVARIABLE NAME="keyid" VALUE="7d57f551-9228-4d3f-9e57-9fce935987f9" />
+<AMVARIABLE NAME="rest_endpoint" VALUE="/scanner.svc/v2/" />
+<AMVARIABLE NAME="upload_file" VALUE="upload/file" />
+<AMVARIABLE NAME="download_file" VALUE="download/file" />
+<AMVARIABLE NAME="scan_progress" VALUE="scan" />
+<AMVARIABLE NAME="delete_file" VALUE="delete" />
+<!-- URL -->
+<AMVARIABLE NAME="upload_uri">%"https://" &amp; apihost &amp;  rest_endpoint &amp; upload_file%</AMVARIABLE>
+<AMVARIABLE NAME="scan_uri">%"https://" &amp; apihost &amp;  rest_endpoint &amp; scan_progress%</AMVARIABLE>
+<AMVARIABLE NAME="download_uri">%"https://" &amp; apihost &amp;  rest_endpoint &amp; download_file%</AMVARIABLE>
+<AMVARIABLE NAME="delete_uri">%"https://" &amp; apihost &amp;  rest_endpoint &amp; delete_file%</AMVARIABLE>
+<!-- Temporary variables -->
+<AMVARIABLE NAME="logfile" VALUE="C:\Temp\GSLogs.log" />
+<AMVARIABLE NAME="response" VALUE="" />
+<AMVARIABLE NAME="scan_status_c" VALUE="-1" />
+<AMVARIABLE NAME="scan_file_result_c" VALUE="" />
+<AMVARIABLE NAME="scan_timeout_c" VALUE="300" />
+<AMVARIABLE NAME="scan_counter_c" VALUE="1" />
+<AMVARIABLE NAME="scan_timer_c" VALUE="0" />
+<AMVARIABLE NAME="inner_json_null">{"Base64ObjData":null,"Base64ObjName":null,"DestinationFileType":null,"DurationSeconds":null,"EmbeddedLogs":null,"EmbeddedParentName":null,"FileHASH":null,"FileName":null,"FileNewHASH":null,"FileNewSizeBytes":null,"FileSizeBytes":null,"FullFilePath":null,"InnerLogs":null,"IsReAttached":null,"LogErrorMessages":null,"LogMessages":null,"MiddleFormats":null, "OutputFileName":null,"OutputFullFilePath":null,"ReAttachedToParent":null,"Result":null,"SourceFileType":null,"SourceTrueFileType":null,"StartJobDateTime":null}</AMVARIABLE>
+<!-- Array for scan status -->
+<AMARRAY NAME="scan_file_result" ROWS="4" />
+<AMARRAY NAME="scan_status" ROWS="6" />
+<AMARRAY ACTIVITY="set" NAME="scan_file_result" STARTINDEXZERO="YES"><SETTER INDEX="0" VALUE="Ok" /><SETTER INDEX="1" VALUE="Drop" /><SETTER INDEX="2" VALUE="Reconstructed" /><SETTER INDEX="3" VALUE="Error" /></AMARRAY>
+<AMARRAY ACTIVITY="set" NAME="scan_status" STARTINDEXZERO="YES"><SETTER INDEX="0" VALUE="Unknown" /><SETTER INDEX="1" VALUE="InQueue" /><SETTER INDEX="2" VALUE="InScan" /><SETTER INDEX="3" VALUE="Finished" /><SETTER INDEX="4" VALUE="Received" /><SETTER INDEX="5" VALUE="PreScan" /></AMARRAY>
+<!-- setup common headers -->
+<AMVARIABLE NAME="h_jobid" VALUE="" />
+<!-- setup headers for upload -->
+<AMVARIABLE NAME="h_upload_filename">%scanfilename%</AMVARIABLE>
+<AMVARIABLE NAME="h_upload_gskey">%keyid%</AMVARIABLE>
+<AMVARIABLE NAME="h_upload_appinfo" VALUE="GLOBALSCAPE" />
+<AMVARIABLE NAME="h_upload_profileid">%cylanceonly_profile_id%</AMVARIABLE>
+<AMVARIABLE NAME="h_upload_fsize">%cylanceonly_profile_id%</AMVARIABLE>
+<AMFILESYSTEM ACTIVITY="get" SOURCE="%scanfilepath%" RESULTVARIABLE="h_upload_fsize" FILEPROPERTY="size" />
+<AMVARIABLE NAME="h_upload_scan" VALUE="true" />
+<AMVARIABLE NAME="h_upload_accept" VALUE="application/json" />
+<!-- setup headers for download -->
+<AMVARIABLE NAME="h_download_filename" VALUE="" />
+<AMVARIABLE NAME="h_download_fsize" VALUE="" />
+<AMVARIABLE NAME="h_download_accept" VALUE="application/octet-stream" />
+<AMIF ACTIVITY="file_exist" FILE="%logfile%">
+   <AMFILESYSTEM ACTIVITY="delete" SOURCE="%logfile%" />
+</AMIF>
+<!-- Upload file to scan, store json output in response variable -->
+<AMHTTP ACTIVITY="post" SSLVERSION="TLS1" TIMEOUT="2" MEASURE="minutes" URL="%upload_uri%" TYPE="file" DATA="%scanfilepath%" RESULTVARIABLE="response"><HEADER NAME="FileName" VALUE="%h_upload_filename%" /><HEADER NAME="GS-Key" VALUE="%h_upload_gskey%" /><HEADER NAME="AppInfo" VALUE="%h_upload_appinfo%" /><HEADER NAME="ProfileID" VALUE="%h_upload_profileid%" /><HEADER NAME="F-Size" VALUE="%h_upload_fsize%" /><HEADER NAME="Accept" VALUE="%h_upload_accept%" /></AMHTTP>
+<AMFILESYSTEM ACTIVITY="write_file" FILE="%logfile%">%"Upload Response : " &amp; response &amp; Chr(10)%</AMFILESYSTEM>
+<AMPOWERSHELL RESULTDATASET="JobInfo_json">Write-Output  '%response%' | ConvertFrom-Json</AMPOWERSHELL>
+<AMPOWERSHELL RESULTDATASET="Scanslog_inner_json">if(!($scanlogarr = $(Write-Output  '%response%' | ConvertFrom-Json).ScansLogArr)) { Write-Output '%inner_json_null%' | ConvertFrom-Json } else { $scanlogarr }</AMPOWERSHELL>
+<!-- Get JobID -->
+<AMVARIABLE ACTIVITY="set" VARIABLENAME="h_jobid">%JobInfo_json.JobID%</AMVARIABLE>
+<!-- Loop till scan finish or timeout -->
+<AMTIMER SESSION="TimerSession1" />
+<AMLOOP ACTIVITY="expression" CONDITION="until" EXPRESSION="%scan_timer_c &gt; scan_timeout_c OR scan_status_c = 3 OR scan_status_c = 4%">
+   <!-- Get file scanning progress -->
+   <AMHTTP SSLVERSION="TLS1" TIMEOUT="2" MEASURE="minutes" URL="%scan_uri &amp; &quot;/&quot; &amp; scan_counter_c &amp; &quot;/&quot; &amp; h_jobid%" RESULTVARIABLE="response" />
+   <AMFILESYSTEM ACTIVITY="write_file" FILE="%logfile%">%"Scan Response : " &amp; response &amp; Chr(10)%</AMFILESYSTEM>
+   <AMPOWERSHELL RESULTDATASET="JobInfo_json">Write-Output  '%response%' | ConvertFrom-Json</AMPOWERSHELL>
+   <!-- Get Scan status -->
+   <AMVARIABLE ACTIVITY="set" VARIABLENAME="scan_status_c">%JobInfo_json.Scan_Status_c%</AMVARIABLE>
+   <AMTIMER ACTIVITY="read" RESULTVARIABLE="scan_timer_c" SESSION="TimerSession1" />
+</AMLOOP>
+<AMPOWERSHELL RESULTDATASET="JobInfo_json">Write-Output  '%response%' | ConvertFrom-Json</AMPOWERSHELL>
+<!-- Check for scan status, 3 = finished or 4 = Received -->
+<AMFILESYSTEM ACTIVITY="write_file" FILE="%logfile%">%"Scanning Process Result : " &amp; scan_status(scan_status_c) &amp; Chr(10)%</AMFILESYSTEM>
+<AMIF EXPRESSION="%scan_status_c = 3 OR scan_status_c = 4%" USECOMPLEXUI="YES">
+   <AMPOWERSHELL RESULTDATASET="Scanslog_inner_json">if(!($scanlogarr = $(Write-Output  '%response%' | ConvertFrom-Json).ScansLogArr)) { Write-Output '%inner_json_null%' | ConvertFrom-Json } else { $scanlogarr }</AMPOWERSHELL>
+   <AMVARIABLE ACTIVITY="set" VARIABLENAME="scan_file_result_c">%Scanslog_inner_json.Result%</AMVARIABLE>
+   <!-- Check scan result, if 2 = Reconstructed then download file else use the original file we have -->
+   <AMFILESYSTEM ACTIVITY="write_file" FILE="%logfile%">%"Scanning File Result : " &amp; scan_file_result(scan_file_result_c) &amp; Chr(10)%</AMFILESYSTEM>
+   <AMIF EXPRESSION="%scan_file_result_c% = 0">
+      <AMVARIABLE ACTIVITY="set" VARIABLENAME="h_download_filename">%Scanslog_inner_json.OutputFileName%</AMVARIABLE>
+      <AMVARIABLE ACTIVITY="set" VARIABLENAME="h_download_fsize">%Scanslog_inner_json.FileNewSizeBytes%</AMVARIABLE>
+      <AMIF EXPRESSION="% NOT h_download_fsize%" USECOMPLEXUI="YES">
+         <AMVARIABLE ACTIVITY="set" VARIABLENAME="h_download_fsize">%h_upload_fsize%</AMVARIABLE>
+      </AMIF>
+      <AMHTTP SSLVERSION="TLS1" TIMEOUT="2" MEASURE="minutes" URL="%download_uri &amp; &quot;/&quot; &amp; h_jobid%" FILE="%&quot;C:\Temp\&quot; &amp; h_jobid%"><HEADER NAME="FileName" VALUE="%h_download_filename%" /><HEADER NAME="F-Size" VALUE="%h_download_fsize%" /><HEADER NAME="Accept" VALUE="%h_download_accept%" /></AMHTTP>
+      <AMFILESYSTEM ACTIVITY="write_file" FILE="%logfile%">%"File downloaded : OK" &amp; Chr(10)%</AMFILESYSTEM>
+   </AMIF>
+<AMELSE />
+   <!-- If it was timed out. -->
+   <AMIF EXPRESSION="%scan_timer_c% &gt; %scan_timeout_c%">
+      <AMFILESYSTEM ACTIVITY="write_file" FILE="%logfile%">%"Scanning : Timedout" &amp; Chr(10)%</AMFILESYSTEM>
+   </AMIF>
+</AMIF>
+<AMTIMER ACTIVITY="stop" RESULTVARIABLE="scan_timer_c" SESSION="TimerSession1" />
+<AMHTTP ACTIVITY="delete" SSLVERSION="TLS1" TIMEOUT="2" MEASURE="minutes" URL="%delete_uri &amp; &quot;/&quot; &amp; h_jobid%" RESULTVARIABLE="response" />
+<AMFILESYSTEM ACTIVITY="write_file" FILE="%logfile%">%"File Deleted : " &amp; response &amp; Chr(10)%</AMFILESYSTEM>
+</AMFUNCTION>
+
+<AMFUNCTION NAME="OnStepStart" ACCESS="private">
+<AMPARAMETER NAME="FunctionName" DESCRIPTION="The function that is starting the step" SUBTYPE="text" />
+<AMPARAMETER NAME="StepNumber" DESCRIPTION="The step number that is about to execute" SUBTYPE="number" />
+
+</AMFUNCTION>
+
+<AMFUNCTION NAME="OnStepEnd" ACCESS="private">
+<AMPARAMETER NAME="FunctionName" DESCRIPTION="The function that is ending the step" SUBTYPE="text" />
+<AMPARAMETER NAME="StepNumber" DESCRIPTION="The step number that is about to end" SUBTYPE="number" />
+
+</AMFUNCTION>
+
+<AMFUNCTION NAME="OnStepError" ACCESS="private">
+<AMPARAMETER NAME="FunctionName" DESCRIPTION="The function with the error" SUBTYPE="text" />
+<AMPARAMETER NAME="StepNumber" DESCRIPTION="The step number of the error" SUBTYPE="number" />
+<AMPARAMETER NAME="ErrorText" DESCRIPTION="The text of the error" SUBTYPE="text" />
+<AMPARAMETER NAME="ErrorCode" DESCRIPTION="The code of the error" SUBTYPE="number" />
+
+</AMFUNCTION>
+
+<AMFUNCTION NAME="OnTaskFailure" ACCESS="private">
+<AMPARAMETER NAME="FunctionName" DESCRIPTION="The function causing the task failure" SUBTYPE="text" />
+<AMPARAMETER NAME="StepNumber" DESCRIPTION="The step number causing the task failure" SUBTYPE="number" />
+<AMPARAMETER NAME="ErrorText" DESCRIPTION="The text of the error" SUBTYPE="text" />
+<AMPARAMETER NAME="ErrorCode" DESCRIPTION="The code of the error" SUBTYPE="number" />
+
+</AMFUNCTION>
+
+<AMFUNCTION NAME="OnTaskStart" ACCESS="private">
+<AMPARAMETER NAME="Reason" DESCRIPTION="The reason the task is starting" SUBTYPE="text" />
+
+</AMFUNCTION>
+
+<AMFUNCTION NAME="OnTaskEnd" ACCESS="private">
+<AMPARAMETER NAME="Reason" DESCRIPTION="The reason the task is ending" SUBTYPE="text" />
+
+</AMFUNCTION>
+
+</AMTASK>

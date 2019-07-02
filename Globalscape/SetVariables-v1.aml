@@ -1,0 +1,73 @@
+<AMTASK>
+<AMTASKHEAD>
+    <TASKINFO TASKVERSION="10.7.100.1" />
+</AMTASKHEAD>
+
+<AMFUNCTION NAME="Main" ACCESS="private" RETURNTYPE="variable">
+<!-- #
+# Paramters that come in from the Event Rule
+# -->
+<AMVARIABLE NAME="DEBUGsw" VALUE="YES" TYPE="text" ISPARAMETER="YES" />
+<AMVARIABLE NAME="TP_FILESFOUND" VALUE="YES" TYPE="text" ISPARAMETER="YES" />
+<AMVARIABLE NAME="TP_SOURCEFOLDER" VALUE="\\FRAN-PC\SharedDevice\Collector\" ISPARAMETER="YES" />
+<AMVARIABLE NAME="TP_SOURCEFILES" VALUE="Grade_*csv,CostCentre_*.csv,Position_*.csv,Division_*.csv,User_*.csv" ISPARAMETER="YES" />
+<AMVARIABLE NAME="TP_ARCHIVE" VALUE="\\nmw4xolxfreiyfilesa.file.core.windows.net\gsbdata\InetPub\EFTRoot\MySite\Usr\kpatel\Cornerstone_QA\Archive\" ISPARAMETER="YES" />
+<AMVARIABLE NAME="TP_DESTINATION" VALUE="/Cornerstone/" TYPE="text" ISPARAMETER="YES" />
+<AMVARIABLE NAME="TP_NOTIFY" VALUE="kpatel@aquion.com.au" TYPE="text" ISPARAMETER="YES" />
+<AMVARIABLE NAME="TP_NOTIFY_ON_ERROR" VALUE="kpatel@aquion.com.au" TYPE="text" ISPARAMETER="YES" />
+<AMVARIABLE NAME="TP_REPORT" VALUE="" TYPE="text" ISPARAMETER="YES" />
+<AMVARIABLE NAME="TP_DATE" VALUE="" DESCRIPTION="The Date the process began to run." TYPE="text" ISPARAMETER="YES" />
+<AMVARIABLE NAME="TP_TIME" VALUE="99999999" DESCRIPTION="The Time the process began to run." TYPE="text" ISPARAMETER="YES" />
+<!-- #
+# Date/Time handling
+# -->
+<!--
+<AMVARIABLE NAME="sDateToday" VALUE="mm/dd/ccyy" />
+   --><AMTEXT ACTIVITY="format_datetime" RESULTVARIABLE="TP_DATE" DATETIMEFORMAT="yyyyMMdd" />
+<AMVARIABLE NAME="sCRLF">%Chr(13) &amp; Chr(10)%</AMVARIABLE>
+<AMVARIABLE NAME="sFileSz" VALUE="" />
+<AMTEXT ACTIVITY="format_datetime" RESULTVARIABLE="TP_TIME" DATETIMEFORMAT="hhmmss" />
+<AMVARIABLE NAME="sFileToWaitFor" VALUE="" TYPE="text" ISPARAMETER="YES" />
+<AMVARIABLE NAME="iCountFiles" VALUE="1" />
+<AMARRAY NAME="arrFilesToWatch" ROWS="%iCountFiles%" />
+</AMFUNCTION>
+
+<AMFUNCTION NAME="OnStepStart" ACCESS="private">
+<AMPARAMETER NAME="FunctionName" DESCRIPTION="The function that is starting the step" SUBTYPE="text" />
+<AMPARAMETER NAME="StepNumber" DESCRIPTION="The step number that is about to execute" SUBTYPE="number" />
+
+</AMFUNCTION>
+
+<AMFUNCTION NAME="OnStepEnd" ACCESS="private">
+<AMPARAMETER NAME="FunctionName" DESCRIPTION="The function that is ending the step" SUBTYPE="text" />
+<AMPARAMETER NAME="StepNumber" DESCRIPTION="The step number that is about to end" SUBTYPE="number" />
+
+</AMFUNCTION>
+
+<AMFUNCTION NAME="OnStepError" ACCESS="private">
+<AMPARAMETER NAME="FunctionName" DESCRIPTION="The function with the error" SUBTYPE="text" />
+<AMPARAMETER NAME="StepNumber" DESCRIPTION="The step number of the error" SUBTYPE="number" />
+<AMPARAMETER NAME="ErrorText" DESCRIPTION="The text of the error" SUBTYPE="text" />
+<AMPARAMETER NAME="ErrorCode" DESCRIPTION="The code of the error" SUBTYPE="number" />
+
+</AMFUNCTION>
+
+<AMFUNCTION NAME="OnTaskFailure" ACCESS="private">
+<AMPARAMETER NAME="FunctionName" DESCRIPTION="The function causing the task failure" SUBTYPE="text" />
+<AMPARAMETER NAME="StepNumber" DESCRIPTION="The step number causing the task failure" SUBTYPE="number" />
+<AMPARAMETER NAME="ErrorText" DESCRIPTION="The text of the error" SUBTYPE="text" />
+<AMPARAMETER NAME="ErrorCode" DESCRIPTION="The code of the error" SUBTYPE="number" />
+
+</AMFUNCTION>
+
+<AMFUNCTION NAME="OnTaskStart" ACCESS="private">
+<AMPARAMETER NAME="Reason" DESCRIPTION="The reason the task is starting" SUBTYPE="text" />
+
+</AMFUNCTION>
+
+<AMFUNCTION NAME="OnTaskEnd" ACCESS="private">
+<AMPARAMETER NAME="Reason" DESCRIPTION="The reason the task is ending" SUBTYPE="text" />
+
+</AMFUNCTION>
+
+</AMTASK>

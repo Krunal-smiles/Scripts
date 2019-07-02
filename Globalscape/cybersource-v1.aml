@@ -1,0 +1,124 @@
+<AMTASK>
+<AMTASKHEAD>
+    <TASKINFO TASKVERSION="10.7.100.1" />
+</AMTASKHEAD>
+
+<AMFUNCTION NAME="Main" ACCESS="private" RETURNTYPE="variable">
+<AMVARIABLE NAME="apihost" VALUE="apitest.cybersource.com" />
+<AMVARIABLE NAME="merchantid" VALUE="testrest" />
+<AMVARIABLE NAME="keyid" VALUE="08c94330-f618-42a3-b09d-e1e43be5efda" />
+<AMVARIABLE NAME="sharedsecretkey" VALUE="yBJxy6LjM2TmcPGu+GaJrHtkke25fPpUX+UY6/L/1tE=" />
+<AMVARIABLE NAME="startdate" VALUE="2018-10-29" />
+<AMVARIABLE NAME="enddate" VALUE="2018-10-30" />
+<AMVARIABLE NAME="uri">%"https://"&amp;apihost&amp;"/sfs/v1/file-details?startDate="&amp;startdate&amp;"&amp;endDate="&amp;enddate&amp;"&amp;organizationId="&amp;merchantid%</AMVARIABLE>
+<AMVARIABLE NAME="urif">%"https://"&amp;apihost&amp;"/sfs/v1/files/"%</AMVARIABLE>
+<AMVARIABLE NAME="Hreqtarget">%"get /sfs/v1/file-details?startDate="&amp;startdate&amp;"&amp;endDate="&amp;enddate&amp;"&amp;organizationId="&amp;merchantid%</AMVARIABLE>
+<AMVARIABLE NAME="Hreqtarget1" VALUE="" />
+<AMVARIABLE NAME="conndate" VALUE="" />
+<AMVARIABLE NAME="Hsignature" VALUE="" />
+<AMVARIABLE NAME="sigfile" VALUE="C:\Temp\cybersource-compute-signature.xml" />
+<AMVARIABLE NAME="jsonfile" VALUE="C:\Temp\cybersource-file-details.json" />
+<AMVARIABLE NAME="csvfile" VALUE="C:\Temp\cybersource-files.csv" />
+<AMIF ACTIVITY="file_exist" FILE="%sigfile%">
+   <AMFILESYSTEM ACTIVITY="delete" SOURCE="%sigfile%" />
+</AMIF>
+<AMIF ACTIVITY="file_exist" FILE="%jsonfile%">
+   <AMFILESYSTEM ACTIVITY="delete" SOURCE="%jsonfile%" />
+</AMIF>
+<AMIF ACTIVITY="file_exist" FILE="%csvfile%">
+   <AMFILESYSTEM ACTIVITY="delete" SOURCE="%csvfile%" />
+</AMIF>
+<AMRUN FILE="%&quot;C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe C:\Temp\cybersource-compute-signature.ps1 -startdate &quot; &amp; startdate &amp; &quot; -enddate &quot; &amp; enddate%" DEFAULTFOLDER="C:\Temp\" WAITFOREND="YES" />
+<!--
+<AMPOWERSHELL RESULTDATASET="res">$apihost = "apitest.cybersource.com"
+$merchantid = "testrest"
+$keyid = "08c94330-f618-42a3-b09d-e1e43be5efda"
+$sharedsecretkey = "yBJxy6LjM2TmcPGu+GaJrHtkke25fPpUX+UY6/L/1tE="
+$startdate = "2018-10-20"
+$enddate = "2018-10-30"
+
+#date: $($conndate)
+$conndate = (get-date -Format r).toString()
+$key = [System.Convert]::FromBase64String("$($sharedsecretkey)")
+$oldstring = "host: $($apihost)
+(request-target): get /sfs/v1/file-details?startDate=$($startdate)&amp;endDate=$($enddate)&amp;organizationId=$($merchantid)
+v-c-merchant-id: $($merchantid)"
+$oldstring = $oldstring -replace "`r",""
+$hstring = [System.Text.Encoding]::UTF8.GetBytes($oldstring)
+$hmacsha = New-Object System.Security.Cryptography.HMACSHA256
+$hmacsha.key = $key
+$bsignature = $hmacsha.ComputeHash($hstring)
+$signature = [System.Convert]::ToBase64String($bsignature)
+
+#$HSignature = "keyid=`"$($keyid)`", algorithm=`"HmacSHA256`", headers=`"host date (request-target) v-c-merchant-id`", signature=`"$($signature)`""
+$HSignature = "keyid=`"$($keyid)`", algorithm=`"HmacSHA256`", headers=`"host (request-target) v-c-merchant-id`", signature=`"$($signature)`""
+#Write-Output "date:$conndate;Signature:$HSignature"
+Write-Output "&lt;root&gt;&lt;header name=`"date`"&gt;$conndate&lt;/header&gt;&lt;header name=`"Signature`"&gt;$HSignature&lt;/header&gt;&lt;/root&gt;"</AMPOWERSHELL>
+   --><AMXML FILE="%sigfile%" SESSION="XmlSession1" />
+<AMXML ACTIVITY="read_node" SESSION="XmlSession1" XPATH="/root/header[@name=&quot;date&quot;]" RESULTVARIABLE="conndate" />
+<AMXML ACTIVITY="read_node" SESSION="XmlSession1" XPATH="/root/header[@name=&quot;Signature&quot;]" RESULTVARIABLE="Hsignature" />
+<AMXML ACTIVITY="end_session" SESSION="XmlSession1" />
+<AMHTTP CONTENTTYPE="application/hal+json" URL="%uri%" FILE="%jsonfile%"><HEADER NAME="host" VALUE="%apihost%" /><HEADER NAME="date" VALUE="%conndate%" /><HEADER NAME="(request-target)" VALUE="%Hreqtarget%" /><HEADER NAME="v-c-merchant-id" VALUE="%merchantid%" /><HEADER NAME="Signature" VALUE="%Hsignature%" /></AMHTTP>
+<AMIF ACTIVITY="file_exist" FILE="%jsonfile%">
+      <AMFILESYSTEM ACTIVITY="write_file" FILE="%csvfile%" APPEND="no">name,fileId,date,mimeType,size,createdTime,lastModifiedTime
+</AMFILESYSTEM>
+      <AMRUN FILE="C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe C:\Temp\cybersource-json-tocsv.ps1" WAITFOREND="YES" />
+</AMIF>
+<AMIF ACTIVITY="file_exist" FILE="%csvfile%">
+   <AMFILESYSTEM ACTIVITY="csv_to_dataset" SOURCE="%csvfile%" RESULTDATASET="test3" />
+   <AMLOOP ACTIVITY="dataset" DATASET="test3">
+      <AMIF ACTIVITY="contains_text" TEXT="%test3.name%" SUBSTRING="Transaction.*Report.csv" USERE="YES">
+         <AMVARIABLE ACTIVITY="set" VARIABLENAME="urif">%"https://" &amp; apihost &amp; "/sfs/v1/files/" &amp; test3.fileId &amp; "?organizationId=" &amp; merchantid%</AMVARIABLE>
+         <AMVARIABLE ACTIVITY="set" VARIABLENAME="Hreqtarget1">%"get /sfs/v1/files/" &amp; test3.fileId &amp; "?organizationId=" &amp; merchantid%</AMVARIABLE>
+<!--
+         <AMSHOWDIALOG>%urif%</AMSHOWDIALOG>
+   -->         <AMRUN FILE="%&quot;C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe C:\Temp\cybersource-compute-signfiles.ps1 -fileid &quot; &amp; test3.fileId%" DEFAULTFOLDER="C:\Temp\" WAITFOREND="YES" />
+         <AMXML FILE="%sigfile%" SESSION="XmlSession1" />
+         <AMXML ACTIVITY="read_node" SESSION="XmlSession1" XPATH="/root/header[@name=&quot;date&quot;]" RESULTVARIABLE="conndate" />
+         <AMXML ACTIVITY="read_node" SESSION="XmlSession1" XPATH="/root/header[@name=&quot;Signature&quot;]" RESULTVARIABLE="Hsignature" />
+         <AMXML ACTIVITY="end_session" SESSION="XmlSession1" />
+         <AMHTTP CONTENTTYPE="application/hal+json" URL="%urif%" FILE="%&quot;C:\Temp\&quot; &amp; test3.date &amp;  &quot;-&quot;  &amp; test3.name%"><HEADER NAME="host" VALUE="%apihost%" /><HEADER NAME="date" VALUE="%conndate%" /><HEADER NAME="(request-target)" VALUE="%Hreqtarget1%" /><HEADER NAME="v-c-merchant-id" VALUE="%merchantid%" /><HEADER NAME="Signature" VALUE="%Hsignature%" /></AMHTTP>
+      </AMIF>
+   </AMLOOP>
+</AMIF>
+</AMFUNCTION>
+
+<AMFUNCTION NAME="OnStepStart" ACCESS="private">
+<AMPARAMETER NAME="FunctionName" DESCRIPTION="The function that is starting the step" SUBTYPE="text" />
+<AMPARAMETER NAME="StepNumber" DESCRIPTION="The step number that is about to execute" SUBTYPE="number" />
+
+</AMFUNCTION>
+
+<AMFUNCTION NAME="OnStepEnd" ACCESS="private">
+<AMPARAMETER NAME="FunctionName" DESCRIPTION="The function that is ending the step" SUBTYPE="text" />
+<AMPARAMETER NAME="StepNumber" DESCRIPTION="The step number that is about to end" SUBTYPE="number" />
+
+</AMFUNCTION>
+
+<AMFUNCTION NAME="OnStepError" ACCESS="private">
+<AMPARAMETER NAME="FunctionName" DESCRIPTION="The function with the error" SUBTYPE="text" />
+<AMPARAMETER NAME="StepNumber" DESCRIPTION="The step number of the error" SUBTYPE="number" />
+<AMPARAMETER NAME="ErrorText" DESCRIPTION="The text of the error" SUBTYPE="text" />
+<AMPARAMETER NAME="ErrorCode" DESCRIPTION="The code of the error" SUBTYPE="number" />
+
+</AMFUNCTION>
+
+<AMFUNCTION NAME="OnTaskFailure" ACCESS="private">
+<AMPARAMETER NAME="FunctionName" DESCRIPTION="The function causing the task failure" SUBTYPE="text" />
+<AMPARAMETER NAME="StepNumber" DESCRIPTION="The step number causing the task failure" SUBTYPE="number" />
+<AMPARAMETER NAME="ErrorText" DESCRIPTION="The text of the error" SUBTYPE="text" />
+<AMPARAMETER NAME="ErrorCode" DESCRIPTION="The code of the error" SUBTYPE="number" />
+
+</AMFUNCTION>
+
+<AMFUNCTION NAME="OnTaskStart" ACCESS="private">
+<AMPARAMETER NAME="Reason" DESCRIPTION="The reason the task is starting" SUBTYPE="text" />
+
+</AMFUNCTION>
+
+<AMFUNCTION NAME="OnTaskEnd" ACCESS="private">
+<AMPARAMETER NAME="Reason" DESCRIPTION="The reason the task is ending" SUBTYPE="text" />
+
+</AMFUNCTION>
+
+</AMTASK>
